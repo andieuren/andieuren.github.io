@@ -110,21 +110,6 @@
 
     /* Accessibility / motion */
     @media (prefers-reduced-motion: reduce){ .btn, button { transition:none } }
-    /* Print layout for generated PDF window */
-    .pdf h1,.pdf h2,.pdf h3{margin:0}
-    .pdf .muted{color:#6b7280}
-    .pdf .section{margin:14px 0 10px}
-    .pdf table{width:100%;border-collapse:collapse}
-    .pdf thead th{font-size:12px;text-align:left;color:#6b7280;border-bottom:1px solid #e5e7eb;padding:6px 4px}
-    .pdf tbody td{padding:8px 4px;border-bottom:1px solid #f1f5f9}
-    .pdf .amount{text-align:right;font-variant-numeric:tabular-nums}
-    .pdf .right{text-align:right}
-    .pdf .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
-    .pdf .kpi{border:1px solid #e5e7eb;border-radius:8px;padding:8px}
-    .pdf .kpi .label{font-size:11px;color:#6b7280}
-    .pdf .kpi .value{font-size:14px;font-weight:700;margin-top:2px}
-    @page { size: A4; margin: 14mm; }
-    @media print { html, body { background:#fff!important } }
   </style>
 </head>
 <body>
@@ -140,8 +125,10 @@
           <div class="sub">Trier, Germany • Trinkgeld & analysis</div>
         </div>
       </div>
-      <div class="controls util">$1<button id="btnAnalyze" class="btn">📊 Analyze</button>
-        <button id="btnPDF" class="btn" title="Save as PDF">⬇︎ Save PDF</button>
+      <div class="controls util">
+        <button id="btnTheme" class="btn" title="Toggle theme">🌗 Theme</button>
+        <button id="btnDensity" class="btn" title="Toggle density">↔︎ Density</button>
+        <button id="btnAnalyze" class="btn">📊 Analyze</button>
         <button id="btnClear" class="btn danger">🗑️ Clear All</button>
       </div>
     </header>
@@ -527,113 +514,8 @@
       console.groupEnd();
     })();
 
-    // Attach key handlers$1
-
-    // --- PDF export
-    function buildPDFHTML(){
-      const now = new Date();
-      const fmt = new Intl.DateTimeFormat('de-DE', { dateStyle:'medium', timeStyle:'short' });
-      const fmtDate = new Intl.DateTimeFormat('de-DE');
-      const sorted = [...entries].sort((a,b)=>a.date.localeCompare(b.date));
-      const range = sorted.length ? `${fmtDate.format(new Date(sorted[0].date))} – ${fmtDate.format(new Date(sorted[sorted.length-1].date))}` : '—';
-      const total = sorted.reduce((a,b)=>a+b.amount,0);
-      const { totalH, rows } = computeShares();
-
-      let rowsHTML = '';
-      for(const e of sorted){ rowsHTML += `<tr><td>${fmtDate.format(new Date(e.date))}</td><td class="amount">${nf.format(e.amount)}</td></tr>`; }
-
-      let shareHTML = '';
-      for(const r of rows){ shareHTML += `<tr><td>${r.name}</td><td class="right">${formatHM(r.hours)}</td><td class="amount">${nf.format(r.amount)}</td></tr>`; }
-
-      let analysisHTML = (function(){
-        if(!sorted.length) return '<p class="muted">No data to analyze.</p>';
-        const amounts = sorted.map(e=>e.amount);
-        const sum = total;
-        const avg = sum/amounts.length;
-        const min = Math.min(...amounts);
-        const max = Math.max(...amounts);
-        const med = (function(nums){ const s=[...nums].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; })(amounts);
-        const byMonth = (function(list){ const map=new Map(); for(const e of list){ const k=e.date.slice(0,7); map.set(k,(map.get(k)||0)+e.amount); } return Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0])); })(sorted);
-        let mRows=''; for(const [m,sumM] of byMonth){ mRows += `<tr><td>${m}</td><td class="amount">${nf.format(sumM)}</td></tr>`; }
-        return `
-          <div class="kpis">
-            <div class="kpi"><div class="label">Entries</div><div class="value">${sorted.length}</div></div>
-            <div class="kpi"><div class="label">Total</div><div class="value">${nf.format(sum)}</div></div>
-            <div class="kpi"><div class="label">Average</div><div class="value">${nf.format(avg)}</div></div>
-            <div class="kpi"><div class="label">Median</div><div class="value">${nf.format(med)}</div></div>
-            <div class="kpi"><div class="label">Min</div><div class="value">${nf.format(min)}</div></div>
-            <div class="kpi"><div class="label">Max</div><div class="value">${nf.format(max)}</div></div>
-          </div>
-          <div class="section">
-            <h3>By Month</h3>
-            <table class="pdfTable"><thead><tr><th>Month</th><th class="amount">Sum</th></tr></thead><tbody>${mRows}</tbody></table>
-          </div>`;
-      })();
-
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Zur Glocke — Tips Report (PDF)</title>
-        <style>
-          body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;padding:0;color:#111827}
-          .pdf{padding:16px 8px}
-          .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #e5e7eb;padding-bottom:8px}
-          .brand{display:flex;gap:10px;align-items:center}
-          .logo{width:30px;height:30px;border-radius:8px;background:radial-gradient(circle at 40% 30%, #f2d98a 0%, #d2b258 55%, #8d6f29 100%); display:grid;place-items:center}
-          .logo svg{width:18px;height:18px;fill:#271d05}
-          h1{font-size:18px;margin:0}
-          .sub{font-size:12px;color:#6b7280}
-          .section{margin-top:14px}
-          table{width:100%;border-collapse:collapse}
-          thead th{font-size:12px;text-align:left;color:#6b7280;border-bottom:1px solid #e5e7eb;padding:6px 4px}
-          tbody td{padding:8px 4px;border-bottom:1px solid #f1f5f9}
-          .amount{text-align:right;font-variant-numeric:tabular-nums}
-          .right{text-align:right}
-          .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
-          .kpi{border:1px solid #e5e7eb;border-radius:8px;padding:8px}
-          .kpi .label{font-size:11px;color:#6b7280}
-          .kpi .value{font-size:14px;font-weight:700;margin-top:2px}
-          @page { size: A4; margin: 14mm; }
-          @media print { html, body { background:#fff!important } }
-          .page-break{page-break-before:always;margin-top:12mm}
-        </style>
-      </head><body onload="setTimeout(()=>window.print(),50)"><div class="pdf">
-        <div class="hdr">
-          <div class="brand">
-            <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-2 2v1h18v-1l-2-2Zm-2 1H7v-6a5 5 0 1 1 10 0v6Z"/></svg></div>
-            <div>
-              <h1>Zur Glocke — Tips Report</h1>
-              <div class="sub">Trier, Germany • Range: ${range} • Generated: ${fmt.format(now)}</div>
-            </div>
-          </div>
-          <div class="sub">Total: <strong>${nf.format(total)}</strong></div>
-        </div>
-
-        <div class="section">
-          <h3>Income Entries</h3>
-          <table><thead><tr><th>Date</th><th class="amount">Amount</th></tr></thead><tbody>${rowsHTML}</tbody></table>
-        </div>
-
-        <div class="section">
-          <h3>Trinkgeld Shares</h3>
-          <table><thead><tr><th>Name</th><th class="right">Hours</th><th class="amount">Share</th></tr></thead><tbody>${shareHTML}</tbody><tfoot><tr><th>Total</th><th class="right">${formatHM(totalH)}</th><th class="amount">${nf.format(total)}</th></tr></tfoot></table>
-        </div>
-
-        <div class="section page-break">
-          <h3>Analysis</h3>
-          ${analysisHTML}
-        </div>
-      </div></body></html>`;
-      return html;
-    }
-
-    function openPDF(){
-      const html = buildPDFHTML();
-      const w = window.open('', '_blank');
-      if(!w){ alert('Please allow popups to export PDF.'); return; }
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-    }
-
-    document.getElementById('btnPDF').addEventListener('click', openPDF);
+    // Attach key handlers
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeSplitModal(); closeAnalyzeModal(); }});
 
     load();
   </script>
