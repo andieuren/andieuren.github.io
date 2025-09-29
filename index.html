@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-density="regular">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zur Glocke — Income Log & Trinkgeld Split</title>
+  <style>
+    :root {
+      --bg:#0b0d10; --card:#12161b; --muted:#8b949e; --fg:#e6edf3;
+      --accent:#c8a646; /* brass bell gold */
+      --accent-2:#9a7e2e; --ok:#10b981; --danger:#ef4444;
+      --ring: rgba(200,166,70,.55); --ring-ok: rgba(16,185,129,.5); --ring-danger: rgba(239,68,68,.5);
+      --border: rgba(255,255,255,.08); --border-2: rgba(255,255,255,.12);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    /* Light theme overrides */
+    [data-theme="light"]{
+      --bg:#f7f7f9; --card:#ffffff; --fg:#111827; --muted:#6b7280; 
+      --border: rgba(0,0,0,.08); --border-2: rgba(0,0,0,.14);
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    html{min-height:100%;background:radial-gradient(1200px 800px at 20% -10%, rgba(200,166,70,.18), transparent 60%), radial-gradient(900px 700px at 100% 0%, rgba(16,185,129,.10), transparent 60%), linear-gradient(180deg,var(--bg),#0f141a)}
+    [data-theme="light"] html, [data-theme="light"]{background:linear-gradient(180deg,#f5f6fb,#eef1f6)}
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:transparent; color:var(--fg); margin:24px; display:block; min-height:100vh}
+
+    /* App shell */
+    .app{width:100%;max-width:1100px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;margin:0 auto;backdrop-filter:saturate(120%) blur(4px)}
+    header{position:sticky;top:0;z-index:5;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(16,18,24,.75),rgba(16,18,24,.45))}
+    [data-theme="light"] header{background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.75))}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:36px;height:36px;border-radius:10px;background:radial-gradient(circle at 40% 30%, #f2d98a 0%, #d2b258 55%, #8d6f29 100%); display:grid;place-items:center; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+    .logo svg{width:22px;height:22px;fill:#271d05;opacity:.9}
+    .titles h1{font-size:18px;margin:0;letter-spacing:.2px}
+    .titles .sub{font-size:12px;color:var(--muted)}
+
+    /* Controls */
+    .controls{display:flex;gap:10px;flex-wrap:wrap}
+    .btn, button{appearance:none;border:0;border-radius:12px;padding:10px 14px;cursor:pointer;background:#1a202b;color:var(--fg);box-shadow:inset 0 0 0 1px var(--border);font-weight:600;letter-spacing:.2px;transition:transform .05s ease, box-shadow .2s ease, background .2s ease}
+    [data-theme="light"] .btn{background:#f7f7fb;}
+    .btn:hover{box-shadow:inset 0 0 0 1px var(--border-2)}
+    .btn:active{transform:translateY(1px)}
+    .btn:focus-visible{outline:none; box-shadow:0 0 0 3px var(--ring)}
+    .btn.small{padding:6px 10px;border-radius:10px}
+    .primary{background:linear-gradient(180deg,var(--accent),var(--accent-2));box-shadow:none;color:#1f1a07}
+    .ok{background:linear-gradient(180deg,#10b981,#0f9f75)}
+    .danger{background:linear-gradient(180deg,#ef4444,#c03636)}
+
+    /* Density */
+    [data-density="compact"] .content{gap:12px}
+    [data-density="compact"] .form{gap:8px}
+    [data-density="compact"] .btn{padding:8px 10px;border-radius:10px}
+    [data-density="compact"] input{padding:8px 10px;border-radius:10px}
+    [data-density="compact"] thead th, [data-density="compact"] tbody td{padding:8px 8px}
+
+    /* Layout */
+    .content{padding:20px 20px 56px;display:grid;gap:18px}
+    .form{display:grid;grid-template-columns:1fr 1fr auto;gap:12px}
+    .field{display:grid;gap:6px}
+    label{font-size:12px;color:var(--muted);letter-spacing:.2px}
+
+    /* Inputs */
+    input[type="date"],input[type="number"],input[type="text"],textarea{
+      width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);
+      background:linear-gradient(180deg,#0f1318,#0c1014);color:var(--fg);
+      transition:border-color .2s ease, box-shadow .2s ease
+    }
+    [data-theme="light"] input{background:#fff}
+    input::placeholder{color:rgba(255,255,255,.35)}
+    [data-theme="light"] input::placeholder{color:#9aa3af}
+    input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,166,70,.18)}
+
+    /* Tables */
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    thead th{text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:10px 10px;border-bottom:1px solid var(--border)}
+    tbody td{padding:12px 10px;border-bottom:1px solid var(--border)}
+    tbody tr:nth-child(2n){background:rgba(255,255,255,.02)}
+    [data-theme="light"] tbody tr:nth-child(2n){background:#f8fafc}
+    tbody tr:hover{background:rgba(200,166,70,.08)}
+    .amount{text-align:right;font-variant-numeric:tabular-nums}
+    .actions{text-align:right}
+
+    /* Summary & cards */
+    .summary{display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:12px;margin-top:4px}
+    .total{font-size:20px;font-weight:800}
+    .empty{text-align:center;padding:36px 12px;color:var(--muted)}
+    .card{background:linear-gradient(180deg,#0f1318,#0c1014);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+    [data-theme="light"] .card{background:#fff}
+    .card h3{margin:0 0 8px 0;font-size:16px}
+    .subgrid{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:10px}
+    .k{font-size:12px;color:var(--muted)}
+    .right{text-align:right}
+
+    /* Modals */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:50;padding:20px}
+    .modal.open{display:flex}
+    .modal .sheet{width:100%;max-width:860px;background:linear-gradient(180deg,#12161b,#0f1318);border:1px solid var(--border-2);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden}
+    [data-theme="light"] .modal .sheet{background:#fff}
+    .sheet header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+    .sheet h2{margin:0;font-size:16px}
+    .sheet .body{padding:16px;max-height:70vh;overflow:auto}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+    .kpi{background:#0f1318;border:1px solid var(--border);border-radius:12px;padding:12px}
+    [data-theme="light"] .kpi{background:#f9fafb}
+    .kpi .label{font-size:12px;color:var(--muted)}
+    .kpi .value{font-size:18px;font-weight:800;margin-top:4px}
+    .table{width:100%;border-collapse:collapse;margin-top:10px}
+    .table th,.table td{border-bottom:1px solid var(--border);padding:8px;text-align:left}
+    .table td.amount{text-align:right;font-variant-numeric:tabular-nums}
+
+    /* Accessibility / motion */
+    @media (prefers-reduced-motion: reduce){ .btn, button { transition:none } }
+    /* Print layout for generated PDF window */
+    .pdf h1,.pdf h2,.pdf h3{margin:0}
+    .pdf .muted{color:#6b7280}
+    .pdf .section{margin:14px 0 10px}
+    .pdf table{width:100%;border-collapse:collapse}
+    .pdf thead th{font-size:12px;text-align:left;color:#6b7280;border-bottom:1px solid #e5e7eb;padding:6px 4px}
+    .pdf tbody td{padding:8px 4px;border-bottom:1px solid #f1f5f9}
+    .pdf .amount{text-align:right;font-variant-numeric:tabular-nums}
+    .pdf .right{text-align:right}
+    .pdf .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+    .pdf .kpi{border:1px solid #e5e7eb;border-radius:8px;padding:8px}
+    .pdf .kpi .label{font-size:11px;color:#6b7280}
+    .pdf .kpi .value{font-size:14px;font-weight:700;margin-top:2px}
+    @page { size: A4; margin: 14mm; }
+    @media print { html, body { background:#fff!important } }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <!-- bell icon -->
+          <svg viewBox="0 0 24 24" role="img" aria-label="Bell"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-2 2v1h18v-1l-2-2Zm-2 1H7v-6a5 5 0 1 1 10 0v6Z"/></svg>
+        </div>
+        <div class="titles">
+          <h1>Zur Glocke — Income Log</h1>
+          <div class="sub">Trier, Germany • Trinkgeld & analysis</div>
+        </div>
+      </div>
+      <div class="controls util">$1<button id="btnAnalyze" class="btn">📊 Analyze</button>
+        <button id="btnPDF" class="btn" title="Save as PDF">⬇︎ Save PDF</button>
+        <button id="btnClear" class="btn danger">🗑️ Clear All</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Income form/list -->
+      <form id="entryForm" class="form">
+        <div class="field">
+          <label for="date">Date</label>
+          <input id="date" name="date" type="date" required />
+        </div>
+        <div class="field">
+          <label for="amount">Amount (EUR)</label>
+          <input id="amount" name="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required />
+        </div>
+        <div class="field" style="align-self:end;">
+          <button class="primary" id="btnAdd" type="submit">＋ Add</button>
+        </div>
+      </form>
+
+      <div id="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 30%">Date</th>
+              <th class="amount" style="width: 30%">Amount</th>
+              <th class="actions" style="width: 40%"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="empty" style="display:none;">No entries yet. Add your first income above.</div>
+      </div>
+
+      <div class="summary">
+        <div class="muted">Entries: <span id="count">0</span></div>
+        <div class="total" id="total">€ 0,00</div>
+      </div>
+
+      <!-- Trinkgeld Split -->
+      <div class="card" id="staffSection">
+        <h3>Trinkgeld Split by Working Hours</h3>
+        <div class="k">Add teammates and their hours (format hh:mm or h). Shares are proportional to hours and sum to the total income shown above.</div>
+        <form id="staffForm" class="subgrid" style="margin-top:12px;">
+          <div class="field">
+            <label for="staffName">Name</label>
+            <input id="staffName" type="text" placeholder="e.g., Andi" />
+          </div>
+          <div class="field">
+            <label for="staffHours">Hours (hh:mm)</label>
+            <input id="staffHours" type="text" inputmode="numeric" pattern="^\d{1,3}(:[0-5]?\d)?$" placeholder="e.g., 5:30 or 5" />
+          </div>
+          <div class="field" style="align-self:end;">
+            <button id="btnAddStaff" class="btn ok" type="submit">＋ Add person</button>
+          </div>
+        </form>
+
+        <table style="width:100%; border-collapse:collapse; margin-top:8px;">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th class="right">Hours</th>
+              <th class="amount">Share</th>
+              <th class="actions"></th>
+            </tr>
+          </thead>
+          <tbody id="staffTbody"></tbody>
+        </table>
+        <div class="summary" style="margin-top:6px;">
+          <div class="k">People: <span id="staffCount">0</span> • Total hours: <span id="staffHoursTotal">0</span></div>
+          <div class="controls">
+            <button id="btnDistribute" class="btn primary small">Calculation</button>
+            <button id="btnClearStaff" class="btn danger small">Clear Staff</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Split Modal -->
+    <div id="splitModal" class="modal" aria-hidden="true" role="dialog">
+      <div class="sheet">
+        <header>
+          <h2>Trinkgeld Shares</h2>
+          <button id="closeSplit" class="btn">✕</button>
+        </header>
+        <div class="body" id="splitBody"></div>
+      </div>
+    </div>
+
+    <!-- Analyze Modal -->
+    <div id="analyzeModal" class="modal" aria-hidden="true" role="dialog">
+      <div class="sheet">
+        <header>
+          <h2>Analysis</h2>
+          <button id="closeAnalyze" class="btn">✕</button>
+        </header>
+        <div class="body" id="analyzeBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Theme & density
+    const THEME_KEY='zg_theme_v1';
+    const DENSITY_KEY='zg_density_v1';
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    const savedDensity = localStorage.getItem(DENSITY_KEY);
+    if(savedTheme){ document.documentElement.setAttribute('data-theme', savedTheme); }
+    else if(prefersLight){ document.documentElement.setAttribute('data-theme','light'); }
+    if(savedDensity){ document.documentElement.setAttribute('data-density', savedDensity); }
+
+    document.getElementById('btnTheme').addEventListener('click', ()=>{
+      const cur = document.documentElement.getAttribute('data-theme')||'dark';
+      const next = cur==='dark'?'light':'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem(THEME_KEY,next);
+    });
+    document.getElementById('btnDensity').addEventListener('click', ()=>{
+      const cur = document.documentElement.getAttribute('data-density')||'regular';
+      const next = cur==='regular'?'compact':'regular';
+      document.documentElement.setAttribute('data-density', next);
+      localStorage.setItem(DENSITY_KEY,next);
+    });
+
+    // --- Utilities
+    const nf = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+    const df = new Intl.DateTimeFormat('de-DE');
+
+    const LS_KEY = 'income_log_v1';
+    const LS_STAFF = 'income_log_staff_v1';
+
+    /** @type {{id:string, date:string, amount:number}[]} */
+    let entries = [];
+    /** @type {{id:string, name:string, hours:number}[]} */
+    let staff = [];
+
+    // --- DOM (income)
+    const tbody = document.getElementById('tbody');
+    const totalEl = document.getElementById('total');
+    const countEl = document.getElementById('count');
+    const emptyEl = document.getElementById('empty');
+    const dateInput = document.getElementById('date');
+    const amountInput = document.getElementById('amount');
+    const form = document.getElementById('entryForm');
+    const rangeLabel = document.getElementById('rangeLabel');
+
+    // Staff DOM
+    const staffForm = document.getElementById('staffForm');
+    const staffName = document.getElementById('staffName');
+    const staffHours = document.getElementById('staffHours');
+    const staffTbody = document.getElementById('staffTbody');
+    const staffCountEl = document.getElementById('staffCount');
+    const staffHoursTotalEl = document.getElementById('staffHoursTotal');
+    const btnDistribute = document.getElementById('btnDistribute');
+    const btnClearStaff = document.getElementById('btnClearStaff');
+
+    // Split modal DOM
+    const splitModal = document.getElementById('splitModal');
+    const splitBody = document.getElementById('splitBody');
+    const closeSplit = document.getElementById('closeSplit');
+
+    // Analyze modal DOM
+    const analyzeModal=document.getElementById('analyzeModal');
+    const analyzeBody=document.getElementById('analyzeBody');
+    const closeAnalyze=document.getElementById('closeAnalyze');
+
+    // --- Init
+    function todayISO() {
+      const d = new Date();
+      const t = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+      return t.toISOString().slice(0,10);
+    }
+    dateInput.value = todayISO();
+
+    function load() {
+      try { entries = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { entries = []; }
+      try { staff = JSON.parse(localStorage.getItem(LS_STAFF) || '[]'); } catch { staff = []; }
+      render();
+      renderStaff();
+    }
+
+    function save() { localStorage.setItem(LS_KEY, JSON.stringify(entries)); }
+    function saveStaff() { localStorage.setItem(LS_STAFF, JSON.stringify(staff)); }
+
+    function addEntry(date, amount) {
+      const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+      entries.push({ id, date, amount });
+      entries.sort((a,b) => a.date.localeCompare(b.date));
+      save();
+      render();
+    }
+    function deleteEntry(id) { entries = entries.filter(e => e.id !== id); save(); render(); }
+
+    function render() {
+      tbody.innerHTML = '';
+      emptyEl.style.display = entries.length ? 'none' : '';
+      let total = 0; let minDate = null, maxDate = null;
+      for (const e of entries) {
+        total += e.amount;
+        const tr = document.createElement('tr');
+        const d = new Date(e.date);
+        if (!minDate || e.date < minDate) minDate = e.date;
+        if (!maxDate || e.date > maxDate) maxDate = e.date;
+        tr.innerHTML = `
+          <td>${df.format(d)}</td>
+          <td class="amount">${nf.format(e.amount)}</td>
+          <td class="actions"><button class="btn" title="Delete" onclick="deleteEntry('${e.id}')">✕</button></td>`;
+        tbody.appendChild(tr);
+      }
+      totalEl.textContent = nf.format(total);
+      countEl.textContent = String(entries.length);
+      if (minDate && maxDate) {
+        const a = df.format(new Date(minDate)); const b = df.format(new Date(maxDate));
+        rangeLabel.textContent = (a === b) ? a : `${a} – ${b}`;
+      } else { rangeLabel.textContent = '—'; }
+      // Update staff table shares in real-time when income changes
+      renderStaff();
+    }
+
+    // Income handlers
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const date = dateInput.value;
+      const amountStr = amountInput.value.replace(',', '.');
+      const amount = Number.parseFloat(amountStr);
+      if (!date || Number.isNaN(amount) || amount < 0) { alert('Please enter a valid date and a non-negative amount.'); return; }
+      addEntry(date, Math.round(amount * 100) / 100);
+      amountInput.value = ''; amountInput.focus();
+    });
+    document.getElementById('btnClear').addEventListener('click', () => {
+      if (!entries.length) return; const ok = confirm('Delete all entries? This cannot be undone.');
+      if (ok) { entries = []; save(); render(); }
+    });
+    window.deleteEntry = deleteEntry;
+    amountInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') form.requestSubmit(); });
+
+    // --- Staff helpers
+    function parseHoursHM(s){
+      if (s == null) return NaN;
+      const m = String(s).trim().match(/^(\d{1,3})(?::([0-5]?\d))?$/);
+      if (!m) return NaN;
+      const h = parseInt(m[1],10);
+      const mins = m[2] ? parseInt(m[2],10) : 0;
+      return h + mins/60;
+    }
+
+    function formatHM(dec){ const n=Number(dec)||0; const minutes=Math.round(n*60); const h=Math.floor(minutes/60); const m=minutes%60; return `${h}:${String(m).padStart(2,'0')}`; }
+
+    function renderStaff(){
+      staffTbody.innerHTML='';
+      let totalH=0;
+      const { rows } = computeShares();
+      for (let i=0; i<staff.length; i++){
+        const m = staff[i];
+        totalH += Number(m.hours)||0;
+        const share = rows[i] ? rows[i].amount : 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${m.name}</td><td class="right">${formatHM(Number(m.hours)||0)}</td><td class="amount">${nf.format(share)}</td><td class="actions"><button class="btn small" onclick="deleteStaff('${m.id}')">✕</button></td>`;
+        staffTbody.appendChild(tr);
+      }
+      staffCountEl.textContent = String(staff.length);
+      staffHoursTotalEl.textContent = formatHM(totalH);
+    }
+
+    function addStaff(name,hours){
+      const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+      staff.push({id,name:name.trim(),hours:Math.max(0, Number(hours)||0)});
+      saveStaff();
+      renderStaff();
+    }
+    function deleteStaff(id){ staff = staff.filter(s=>s.id!==id); saveStaff(); renderStaff(); }
+
+    function computeShares(){
+      const total = entries.reduce((a,b)=>a + (b.amount||0), 0);
+      const totalH = staff.reduce((a,b)=>a + (Number(b.hours)||0), 0);
+      if (totalH <= 0) return {total, totalH, rows: []};
+      // Proportional split with cent-correct rounding
+      const cents = Math.round(total * 100);
+      const weights = staff.map(s=>({name:s.name, hours:Number(s.hours)||0}));
+      const raw = weights.map(w => ({...w, share: (w.hours/totalH) * cents}));
+      const floors = raw.map(r => ({...r, c: Math.floor(r.share)}));
+      let sumFloor = floors.reduce((a,b)=>a+b.c,0);
+      let remainder = cents - sumFloor;
+      // Distribute remainder to largest fractional parts
+      const order = raw
+        .map((r,i)=>({i, frac: r.share - Math.floor(r.share)}))
+        .sort((a,b)=>b.frac - a.frac);
+      const extra = new Array(floors.length).fill(0);
+      for(let k=0; k<remainder; k++) extra[order[k % order.length].i]++;
+      const rows = floors.map((f,i)=>({name:f.name, hours:f.hours, amount:(f.c + extra[i])/100}));
+      return {total, totalH, rows};
+    }
+
+    function openSplit(){
+      const {total,totalH,rows}=computeShares();
+      if (!rows.length){
+        splitBody.innerHTML = '<p class="muted">Add staff with hours to calculate shares.</p>';
+      } else {
+        let sum=0; let html = '<div class="grid">'
+          + `<div class="kpi"><div class="label">Total income</div><div class="value">${nf.format(total)}</div></div>`
+          + `<div class="kpi"><div class="label">Total hours</div><div class="value">${formatHM(totalH)}</div></div>`
+          + `<div class="kpi"><div class="label">People</div><div class="value">${rows.length}</div></div>`
+          + '</div>';
+        html += '<table class="table" style="margin-top:12px"><thead><tr><th>Name</th><th class="right">Hours</th><th class="amount">Share</th></tr></thead><tbody>';
+        for (const r of rows){ sum+=r.amount; html += `<tr><td>${r.name}</td><td class="right">${formatHM(r.hours)}</td><td class="amount">${nf.format(r.amount)}</td></tr>`; }
+        html += `</tbody><tfoot><tr><th>Total</th><th class="right">${formatHM(totalH)}</th><th class="amount">${nf.format(sum)}</th></tr></tfoot></table>`;
+        splitBody.innerHTML = html;
+      }
+      splitModal.classList.add('open');
+      splitModal.setAttribute('aria-hidden','false');
+    }
+    function closeSplitModal(){
+      splitModal.classList.remove('open');
+      splitModal.setAttribute('aria-hidden','true');
+    }
+
+    // Staff listeners
+    staffForm.addEventListener('submit', (ev)=>{
+      ev.preventDefault();
+      const name = staffName.value.trim();
+      const raw = String(staffHours.value).trim();
+      const hours = parseHoursHM(raw);
+      if (!name) { alert('Please enter a name.'); return; }
+      if (!Number.isFinite(hours) || hours < 0) { alert('Please enter hours as hh:mm or h (e.g., 5:30 or 5).'); return; }
+      addStaff(name, Math.round(hours*100)/100);
+      staffName.value=''; staffHours.value=''; staffName.focus();
+    });
+    btnClearStaff.addEventListener('click', ()=>{ if (!staff.length) return; const ok = confirm('Clear all staff?'); if (ok) { staff = []; saveStaff(); renderStaff(); } });
+    btnDistribute.addEventListener('click', openSplit);
+    closeSplit.addEventListener('click', closeSplitModal); splitModal.addEventListener('click', (e)=>{ if(e.target.id==='splitModal') closeSplitModal(); });
+
+    // Analyze helpers
+    function euro(n){return nf.format(n)}
+    function groupByMonth(list){const map=new Map(); for(const e of list){const k=e.date.slice(0,7); map.set(k,(map.get(k)||0)+e.amount)} return Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0]))}
+    function median(nums){if(!nums.length) return 0; const s=[...nums].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2}
+    function buildAnalysisHTML(list){ if(!list.length){return '<p class="muted">No data to analyze.</p>'}
+      const amounts=list.map(e=>e.amount); const total=amounts.reduce((a,b)=>a+b,0); const avg=total/amounts.length; const min=Math.min(...amounts); const max=Math.max(...amounts); const med=median(amounts); const first=list[0].date; const last=list[list.length-1].date; const byMonth=groupByMonth(list);
+      let monthRows=''; for(const [m,sum] of byMonth){monthRows+=`<tr><td>${m}</td><td class="amount">${euro(sum)}</td></tr>`}
+      return `<div class="grid"><div class="kpi"><div class="label">Entries</div><div class="value">${list.length}</div></div><div class="kpi"><div class="label">Total</div><div class="value">${euro(total)}</div></div><div class="kpi"><div class="label">Average</div><div class="value">${euro(avg)}</div></div><div class="kpi"><div class="label">Median</div><div class="value">${euro(med)}</div></div><div class="kpi"><div class="label">Min</div><div class="value">${euro(min)}</div></div><div class="kpi"><div class="label">Max</div><div class="value">${euro(max)}</div></div><div class="kpi"><div class="label">First date</div><div class="value">${first}</div></div><div class="kpi"><div class="label">Last date</div><div class="value">${last}</div></div></div><h3 class="muted" style="margin-top:14px">By Month</h3><table class="table"><thead><tr><th>Month</th><th class="amount">Sum</th></tr></thead><tbody>${monthRows}</tbody></table>`; }
+    function openAnalyze(){ const sorted=[...entries].sort((a,b)=>a.date.localeCompare(b.date)); analyzeBody.innerHTML=buildAnalysisHTML(sorted); analyzeModal.classList.add('open'); analyzeModal.setAttribute('aria-hidden','false'); }
+    function closeAnalyzeModal(){ analyzeModal.classList.remove('open'); analyzeModal.setAttribute('aria-hidden','true'); }
+    document.getElementById('btnAnalyze').addEventListener('click', openAnalyze);
+    closeAnalyze.addEventListener('click', closeAnalyzeModal);
+    analyzeModal.addEventListener('click', (e)=>{ if(e.target.id==='analyzeModal') closeAnalyzeModal(); });
+
+    // Expose deleteStaff for inline buttons
+    window.deleteStaff = deleteStaff;
+
+    // --- Self tests (console)
+    (function runSelfTests(){
+      const tests = [];
+      function approxEqual(a,b,eps=1e-6){ return Math.abs(a-b) <= eps; }
+
+      // parseHoursHM tests
+      tests.push({name:'parse 5:30', pass: approxEqual(parseHoursHM('5:30'), 5.5)});
+      tests.push({name:'parse 5', pass: approxEqual(parseHoursHM('5'), 5)});
+      tests.push({name:'parse 0:45', pass: approxEqual(parseHoursHM('0:45'), 0.75)});
+      tests.push({name:'parse invalid', pass: Number.isNaN(parseHoursHM('xx'))});
+
+      // computeShares-like test using a pure helper
+      function computeSharesGiven(total, arr){
+        const totalH = arr.reduce((a,b)=>a+b,0);
+        if (totalH<=0) return arr.map(()=>0);
+        const cents = Math.round(total*100);
+        const raw = arr.map(h=>h/totalH*cents);
+        const floors = raw.map(x=>Math.floor(x));
+        let sumFloor = floors.reduce((a,b)=>a+b,0);
+        let remainder = cents - sumFloor;
+        const order = raw.map((x,i)=>({i, frac:x-Math.floor(x)})).sort((a,b)=>b.frac-a.frac);
+        const extra = new Array(arr.length).fill(0);
+        for(let k=0;k<remainder;k++) extra[order[k%order.length].i]++;
+        return floors.map((c,i)=> (c+extra[i])/100 );
+      }
+      const r1 = computeSharesGiven(10, [1,1,1]);
+      tests.push({name:'rounding sum equals total (10€)', pass: approxEqual(r1.reduce((a,b)=>a+b,0), 10)});
+      const r2 = computeSharesGiven(100, [1,2]);
+      tests.push({name:'proportion 1:2 close (100€)', pass: r2[1] > r2[0] && approxEqual(r2.reduce((a,b)=>a+b,0), 100)});
+
+      console.group('%cSelf-tests','color:#10b981');
+      let all=true; tests.forEach(t=>{ all = all && t.pass; console.log((t.pass?'✅':'❌'), t.name); });
+      console.log('All tests pass:', all);
+      console.groupEnd();
+    })();
+
+    // Attach key handlers$1
+
+    // --- PDF export
+    function buildPDFHTML(){
+      const now = new Date();
+      const fmt = new Intl.DateTimeFormat('de-DE', { dateStyle:'medium', timeStyle:'short' });
+      const fmtDate = new Intl.DateTimeFormat('de-DE');
+      const sorted = [...entries].sort((a,b)=>a.date.localeCompare(b.date));
+      const range = sorted.length ? `${fmtDate.format(new Date(sorted[0].date))} – ${fmtDate.format(new Date(sorted[sorted.length-1].date))}` : '—';
+      const total = sorted.reduce((a,b)=>a+b.amount,0);
+      const { totalH, rows } = computeShares();
+
+      let rowsHTML = '';
+      for(const e of sorted){ rowsHTML += `<tr><td>${fmtDate.format(new Date(e.date))}</td><td class="amount">${nf.format(e.amount)}</td></tr>`; }
+
+      let shareHTML = '';
+      for(const r of rows){ shareHTML += `<tr><td>${r.name}</td><td class="right">${formatHM(r.hours)}</td><td class="amount">${nf.format(r.amount)}</td></tr>`; }
+
+      let analysisHTML = (function(){
+        if(!sorted.length) return '<p class="muted">No data to analyze.</p>';
+        const amounts = sorted.map(e=>e.amount);
+        const sum = total;
+        const avg = sum/amounts.length;
+        const min = Math.min(...amounts);
+        const max = Math.max(...amounts);
+        const med = (function(nums){ const s=[...nums].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; })(amounts);
+        const byMonth = (function(list){ const map=new Map(); for(const e of list){ const k=e.date.slice(0,7); map.set(k,(map.get(k)||0)+e.amount); } return Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0])); })(sorted);
+        let mRows=''; for(const [m,sumM] of byMonth){ mRows += `<tr><td>${m}</td><td class="amount">${nf.format(sumM)}</td></tr>`; }
+        return `
+          <div class="kpis">
+            <div class="kpi"><div class="label">Entries</div><div class="value">${sorted.length}</div></div>
+            <div class="kpi"><div class="label">Total</div><div class="value">${nf.format(sum)}</div></div>
+            <div class="kpi"><div class="label">Average</div><div class="value">${nf.format(avg)}</div></div>
+            <div class="kpi"><div class="label">Median</div><div class="value">${nf.format(med)}</div></div>
+            <div class="kpi"><div class="label">Min</div><div class="value">${nf.format(min)}</div></div>
+            <div class="kpi"><div class="label">Max</div><div class="value">${nf.format(max)}</div></div>
+          </div>
+          <div class="section">
+            <h3>By Month</h3>
+            <table class="pdfTable"><thead><tr><th>Month</th><th class="amount">Sum</th></tr></thead><tbody>${mRows}</tbody></table>
+          </div>`;
+      })();
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Zur Glocke — Tips Report (PDF)</title>
+        <style>
+          body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;padding:0;color:#111827}
+          .pdf{padding:16px 8px}
+          .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #e5e7eb;padding-bottom:8px}
+          .brand{display:flex;gap:10px;align-items:center}
+          .logo{width:30px;height:30px;border-radius:8px;background:radial-gradient(circle at 40% 30%, #f2d98a 0%, #d2b258 55%, #8d6f29 100%); display:grid;place-items:center}
+          .logo svg{width:18px;height:18px;fill:#271d05}
+          h1{font-size:18px;margin:0}
+          .sub{font-size:12px;color:#6b7280}
+          .section{margin-top:14px}
+          table{width:100%;border-collapse:collapse}
+          thead th{font-size:12px;text-align:left;color:#6b7280;border-bottom:1px solid #e5e7eb;padding:6px 4px}
+          tbody td{padding:8px 4px;border-bottom:1px solid #f1f5f9}
+          .amount{text-align:right;font-variant-numeric:tabular-nums}
+          .right{text-align:right}
+          .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+          .kpi{border:1px solid #e5e7eb;border-radius:8px;padding:8px}
+          .kpi .label{font-size:11px;color:#6b7280}
+          .kpi .value{font-size:14px;font-weight:700;margin-top:2px}
+          @page { size: A4; margin: 14mm; }
+          @media print { html, body { background:#fff!important } }
+          .page-break{page-break-before:always;margin-top:12mm}
+        </style>
+      </head><body onload="setTimeout(()=>window.print(),50)"><div class="pdf">
+        <div class="hdr">
+          <div class="brand">
+            <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-2 2v1h18v-1l-2-2Zm-2 1H7v-6a5 5 0 1 1 10 0v6Z"/></svg></div>
+            <div>
+              <h1>Zur Glocke — Tips Report</h1>
+              <div class="sub">Trier, Germany • Range: ${range} • Generated: ${fmt.format(now)}</div>
+            </div>
+          </div>
+          <div class="sub">Total: <strong>${nf.format(total)}</strong></div>
+        </div>
+
+        <div class="section">
+          <h3>Income Entries</h3>
+          <table><thead><tr><th>Date</th><th class="amount">Amount</th></tr></thead><tbody>${rowsHTML}</tbody></table>
+        </div>
+
+        <div class="section">
+          <h3>Trinkgeld Shares</h3>
+          <table><thead><tr><th>Name</th><th class="right">Hours</th><th class="amount">Share</th></tr></thead><tbody>${shareHTML}</tbody><tfoot><tr><th>Total</th><th class="right">${formatHM(totalH)}</th><th class="amount">${nf.format(total)}</th></tr></tfoot></table>
+        </div>
+
+        <div class="section page-break">
+          <h3>Analysis</h3>
+          ${analysisHTML}
+        </div>
+      </div></body></html>`;
+      return html;
+    }
+
+    function openPDF(){
+      const html = buildPDFHTML();
+      const w = window.open('', '_blank');
+      if(!w){ alert('Please allow popups to export PDF.'); return; }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }
+
+    document.getElementById('btnPDF').addEventListener('click', openPDF);
+
+    load();
+  </script>
+</body>
+</html>
