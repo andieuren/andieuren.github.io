@@ -113,29 +113,7 @@
     @media (prefers-reduced-motion: reduce){ .btn, button { transition:none } }
       /* Responsive (mobile-first enhancements) */
     @media (max-width: 720px){
-      body{ margin:12px; overflow-x:hidden }
-      header{ padding:12px 14px; gap:10px; flex-wrap:wrap }
-      .titles h1{ font-size:16px }
-      .titles .sub,.titles .range{ font-size:11px }
-      .controls{ width:100%; justify-content:flex-start; gap:8px; flex-wrap:wrap }
-      .btn{ padding:8px 10px; border-radius:10px; font-size:12px; max-width:100% }
-      .content{ padding:14px; gap:14px; overflow-x:hidden }
-      .app{ overflow-x:hidden }
-
-      /* Forms: single column, no overflow */
-      .form{ grid-template-columns:1fr; gap:10px }
-      .subgrid{ grid-template-columns:1fr; gap:10px }
-      .field{ width:100% }
-      .field > *{ max-width:100% }
-      input, button{ max-width:100% }
-      .form .field:last-child button, .subgrid .field:last-child button{ width:100% }
-
-      /* Tables: keep inside viewport */
-      #tableWrap{ overflow-x:hidden; -webkit-overflow-scrolling:touch }
-      table{ width:100%; min-width:0; table-layout:fixed }
-      thead th, tbody td{ word-wrap:break-word; overflow-wrap:anywhere }
-      .modal .sheet{ max-width:94vw; width:94vw }
-    }
+      body{ margin:12px }
       header{ padding:12px 14px; gap:10px; flex-wrap:wrap }
       .titles h1{ font-size:16px }
       .titles .sub,.titles .range{ font-size:11px }
@@ -153,9 +131,6 @@
 
     @media (max-width: 380px){
       .btn{ padding:7px 9px; font-size:11px }
-      .titles h1{ font-size:15px }
-      table{ width:100%; min-width:0; table-layout:fixed }
-    }
       .titles h1{ font-size:15px }
       table{ min-width:500px }
     }
