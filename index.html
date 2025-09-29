@@ -79,7 +79,11 @@
     [data-theme="light"] tbody tr:nth-child(2n){background:#f8fafc}
     tbody tr:hover{background:rgba(200,166,70,.08)}
     .amount{text-align:right;font-variant-numeric:tabular-nums}
-    .actions{text-align:right}
+    $1
+    .sortable{cursor:pointer;user-select:none;position:relative}
+    .sortable:focus-visible{outline:none; box-shadow:0 0 0 3px var(--ring); border-radius:6px}
+    .sortable[data-sort="asc"]::after{content:"▲";position:absolute;right:8px;opacity:.7;font-size:11px}
+    .sortable[data-sort="desc"]::after{content:"▼";position:absolute;right:8px;opacity:.7;font-size:11px}
 
     /* Summary & cards */
     .summary{display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:12px;margin-top:4px}
@@ -216,9 +220,9 @@
         <table style="width:100%; border-collapse:collapse; margin-top:8px;">
           <thead>
             <tr>
-              <th>Name</th>
-              <th class="right">Hours</th>
-              <th class="amount">Share</th>
+              <th id="thName" class="sortable" role="button" tabindex="0" aria-label="Sort by name">Name</th>
+              <th id="thHours" class="right sortable" role="button" tabindex="0" aria-label="Sort by hours">Hours</th>
+              <th id="thShare" class="amount sortable" role="button" tabindex="0" aria-label="Sort by share">Share</th>
               <th class="actions"></th>
             </tr>
           </thead>
@@ -411,20 +415,40 @@
 
     function formatHM(dec){ const n=Number(dec)||0; const minutes=Math.round(n*60); const h=Math.floor(minutes/60); const m=minutes%60; return `${h}:${String(m).padStart(2,'0')}`; }
 
+    let staffSort = { key:null, dir:'asc' };
+    function applyHeaderSortIndicators(){
+      document.getElementById('thName').removeAttribute('data-sort');
+      document.getElementById('thHours').removeAttribute('data-sort');
+      document.getElementById('thShare').removeAttribute('data-sort');
+      if(!staffSort.key) return;
+      const id = staffSort.key==='name'?'thName':(staffSort.key==='hours'?'thHours':'thShare');
+      document.getElementById(id).setAttribute('data-sort', staffSort.dir);
+    }
+
     function renderStaff(){
       staffTbody.innerHTML='';
       let totalH=0;
       const { rows } = computeShares();
-      for (let i=0; i<staff.length; i++){
-        const m = staff[i];
-        totalH += Number(m.hours)||0;
-        const share = rows[i] ? rows[i].amount : 0;
+      const shareById = new Map(rows.map(r=>[r.id, r.amount]));
+      let list = staff.map(s=>({ id:s.id, name:s.name, hours:Number(s.hours)||0, share: shareById.get(s.id)||0 }));
+
+      for(const m of list){ totalH += m.hours; }
+
+      if(staffSort.key){
+        const dir = staffSort.dir==='asc'?1:-1;
+        if(staffSort.key==='name') list.sort((a,b)=> a.name.localeCompare(b.name, undefined, {sensitivity:'base'}) * dir);
+        else if(staffSort.key==='hours') list.sort((a,b)=> (a.hours-b.hours) * dir);
+        else if(staffSort.key==='share') list.sort((a,b)=> (a.share-b.share) * dir);
+      }
+
+      for (const m of list){
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${m.name}</td><td class="right">${formatHM(Number(m.hours)||0)}</td><td class="amount">${nf.format(share)}</td><td class="actions"><button class="btn small" onclick="deleteStaff('${m.id}')">✕</button></td>`;
+        tr.innerHTML = `<td>${m.name}</td><td class="right">${formatHM(m.hours)}</td><td class="amount">${nf.format(m.share)}</td><td class="actions"><button class="btn small" onclick="deleteStaff('${m.id}')">✕</button></td>`;
         staffTbody.appendChild(tr);
       }
-      staffCountEl.textContent = String(staff.length);
+      staffCountEl.textContent = String(list.length);
       staffHoursTotalEl.textContent = formatHM(totalH);
+      applyHeaderSortIndicators();
     }
 
     function addStaff(name,hours){
@@ -439,20 +463,18 @@
       const total = entries.reduce((a,b)=>a + (b.amount||0), 0);
       const totalH = staff.reduce((a,b)=>a + (Number(b.hours)||0), 0);
       if (totalH <= 0) return {total, totalH, rows: []};
-      // Proportional split with cent-correct rounding
       const cents = Math.round(total * 100);
-      const weights = staff.map(s=>({name:s.name, hours:Number(s.hours)||0}));
+      const weights = staff.map(s=>({id:s.id, name:s.name, hours:Number(s.hours)||0}));
       const raw = weights.map(w => ({...w, share: (w.hours/totalH) * cents}));
       const floors = raw.map(r => ({...r, c: Math.floor(r.share)}));
       let sumFloor = floors.reduce((a,b)=>a+b.c,0);
       let remainder = cents - sumFloor;
-      // Distribute remainder to largest fractional parts
       const order = raw
         .map((r,i)=>({i, frac: r.share - Math.floor(r.share)}))
         .sort((a,b)=>b.frac - a.frac);
       const extra = new Array(floors.length).fill(0);
       for(let k=0; k<remainder; k++) extra[order[k % order.length].i]++;
-      const rows = floors.map((f,i)=>({name:f.name, hours:f.hours, amount:(f.c + extra[i])/100}));
+      const rows = floors.map((f,i)=>({id:f.id, name:f.name, hours:f.hours, amount:(f.c + extra[i])/100}));
       return {total, totalH, rows};
     }
 
@@ -493,6 +515,19 @@
     btnClearStaff.addEventListener('click', ()=>{ if (!staff.length) return; const ok = confirm('Clear all staff?'); if (ok) { staff = []; saveStaff(); renderStaff(); } });
     btnDistribute.addEventListener('click', openSplit);
     closeSplit.addEventListener('click', closeSplitModal); splitModal.addEventListener('click', (e)=>{ if(e.target.id==='splitModal') closeSplitModal(); });
+
+    // Sortable header handlers
+    function toggleSort(key){
+      if(staffSort.key===key){ staffSort.dir = (staffSort.dir==='asc'?'desc':'asc'); }
+      else { staffSort.key = key; staffSort.dir = 'asc'; }
+      renderStaff();
+    }
+    document.getElementById('thName').addEventListener('click', ()=>toggleSort('name'));
+    document.getElementById('thHours').addEventListener('click', ()=>toggleSort('hours'));
+    document.getElementById('thShare').addEventListener('click', ()=>toggleSort('share'));
+    ['thName','thHours','thShare'].forEach(id=>{
+      document.getElementById(id).addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleSort(id==='thName'?'name':(id==='thHours'?'hours':'share')); } });
+    });
 
     // Analyze helpers
     function euro(n){return nf.format(n)}
