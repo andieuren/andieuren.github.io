@@ -260,7 +260,7 @@
 
     // --- Utilities
     const nf = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
-    const df = new Intl.DateTimeFormat('de-DE');
+    const df = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
 
     const LS_KEY = 'income_log_v1';
     const LS_STAFF = 'income_log_staff_v1';
