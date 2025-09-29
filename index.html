@@ -33,6 +33,7 @@
     .logo svg{width:22px;height:22px;fill:#271d05;opacity:.9}
     .titles h1{font-size:18px;margin:0;letter-spacing:.2px}
     .titles .sub{font-size:12px;color:var(--muted)}
+    .titles .range{font-size:12px;color:var(--muted)}
 
     /* Controls */
     .controls{display:flex;gap:10px;flex-wrap:wrap}
@@ -91,7 +92,7 @@
     .k{font-size:12px;color:var(--muted)}
     .right{text-align:right}
 
-    /* Modals */
+    /* Modals (centered over the whole page) */
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:50;padding:20px}
     .modal.open{display:flex}
     .modal .sheet{width:100%;max-width:860px;background:linear-gradient(180deg,#12161b,#0f1318);border:1px solid var(--border-2);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden}
@@ -123,12 +124,15 @@
         <div class="titles">
           <h1>Zur Glocke — Income Log</h1>
           <div class="sub">Trier, Germany • Trinkgeld & analysis</div>
+          <div class="range" id="rangeLabel">—</div>
         </div>
       </div>
       <div class="controls util">
         <button id="btnTheme" class="btn" title="Toggle theme">🌗 Theme</button>
         <button id="btnDensity" class="btn" title="Toggle density">↔︎ Density</button>
         <button id="btnAnalyze" class="btn">📊 Analyze</button>
+        <button id="btnExport" class="btn" title="Export data">⬇︎ Export</button>
+        <button id="btnImport" class="btn" title="Import data">⬆︎ Import</button>
         <button id="btnClear" class="btn danger">🗑️ Clear All</button>
       </div>
     </header>
@@ -145,7 +149,7 @@
           <input id="amount" name="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required />
         </div>
         <div class="field" style="align-self:end;">
-          <button class="primary" id="btnAdd" type="submit">＋ Add</button>
+          <button class="primary" id="btnAdd" type="button">＋ Add</button>
         </div>
       </form>
 
@@ -274,6 +278,7 @@
     const dateInput = document.getElementById('date');
     const amountInput = document.getElementById('amount');
     const form = document.getElementById('entryForm');
+    const btnAdd = document.getElementById('btnAdd');
     const rangeLabel = document.getElementById('rangeLabel');
 
     // Staff DOM
@@ -349,22 +354,27 @@
       renderStaff();
     }
 
-    // Income handlers
+    // Income handlers (prevent double submit)
+    let isSubmitting = false;
+    btnAdd.addEventListener('click', ()=>{ form.requestSubmit(); });
     form.addEventListener('submit', (ev) => {
       ev.preventDefault();
+      if (isSubmitting) return; // guard against duplicates
+      isSubmitting = true;
       const date = dateInput.value;
       const amountStr = amountInput.value.replace(',', '.');
       const amount = Number.parseFloat(amountStr);
-      if (!date || Number.isNaN(amount) || amount < 0) { alert('Please enter a valid date and a non-negative amount.'); return; }
+      if (!date || Number.isNaN(amount) || amount < 0) { alert('Please enter a valid date and a non-negative amount.'); isSubmitting=false; return; }
       addEntry(date, Math.round(amount * 100) / 100);
       amountInput.value = ''; amountInput.focus();
+      setTimeout(()=>{ isSubmitting=false; }, 0);
     });
+
     document.getElementById('btnClear').addEventListener('click', () => {
       if (!entries.length) return; const ok = confirm('Delete all entries? This cannot be undone.');
       if (ok) { entries = []; save(); render(); }
     });
     window.deleteEntry = deleteEntry;
-    amountInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') form.requestSubmit(); });
 
     // --- Staff helpers
     function parseHoursHM(s){
@@ -475,6 +485,84 @@
     closeAnalyze.addEventListener('click', closeAnalyzeModal);
     analyzeModal.addEventListener('click', (e)=>{ if(e.target.id==='analyzeModal') closeAnalyzeModal(); });
 
+    // --- Import/Export
+    function exportData(){
+      const data = { version: 1, exportedAt: new Date().toISOString(), entries, staff };
+      const pretty = JSON.stringify(data, null, 2);
+      const blob = new Blob([pretty], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const d = new Date();
+      const pad = n=>String(n).padStart(2,'0');
+      const fname = `zg-income-backup-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`;
+      a.href = url; a.download = fname; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function validateEntries(arr){
+      if(!Array.isArray(arr)) return [];
+      const out = [];
+      for(const e of arr){
+        if(!e) continue;
+        const date = typeof e.date === 'string' ? e.date.slice(0,10) : null;
+        const amount = typeof e.amount === 'number' && Number.isFinite(e.amount) ? e.amount : NaN;
+        if(date && !Number.isNaN(amount)){
+          out.push({ id: (e.id|| (crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()))), date, amount });
+        }
+      }
+      return out;
+    }
+    function validateStaff(arr){
+      if(!Array.isArray(arr)) return [];
+      const out = [];
+      for(const s of arr){
+        if(!s) continue;
+        const name = typeof s.name === 'string' ? s.name : null;
+        const hours = typeof s.hours === 'number' && Number.isFinite(s.hours) ? Math.max(0, s.hours) : NaN;
+        if(name && !Number.isNaN(hours)){
+          out.push({ id: (s.id|| (crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()))), name: name.trim(), hours });
+        }
+      }
+      return out;
+    }
+
+    function importData(){
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try{
+            const obj = JSON.parse(String(ev.target.result||'{}'));
+            const newEntries = validateEntries(obj.entries);
+            const newStaff = validateStaff(obj.staff);
+            if(newEntries.length===0 && newStaff.length===0){
+              alert('Import failed: no valid entries/staff found.');
+              return;
+            }
+            entries = newEntries;
+            staff = newStaff;
+            save();
+            saveStaff();
+            render();
+            renderStaff();
+            alert('Import successful.');
+          }catch(err){
+            console.error(err);
+            alert('Import failed: invalid JSON file.');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    document.getElementById('btnExport').addEventListener('click', exportData);
+    document.getElementById('btnImport').addEventListener('click', importData);
+
     // Expose deleteStaff for inline buttons
     window.deleteStaff = deleteStaff;
 
@@ -488,6 +576,7 @@
       tests.push({name:'parse 5', pass: approxEqual(parseHoursHM('5'), 5)});
       tests.push({name:'parse 0:45', pass: approxEqual(parseHoursHM('0:45'), 0.75)});
       tests.push({name:'parse invalid', pass: Number.isNaN(parseHoursHM('xx'))});
+      tests.push({name:'parse 12:00', pass: approxEqual(parseHoursHM('12:00'), 12)});
 
       // computeShares-like test using a pure helper
       function computeSharesGiven(total, arr){
@@ -507,6 +596,8 @@
       tests.push({name:'rounding sum equals total (10€)', pass: approxEqual(r1.reduce((a,b)=>a+b,0), 10)});
       const r2 = computeSharesGiven(100, [1,2]);
       tests.push({name:'proportion 1:2 close (100€)', pass: r2[1] > r2[0] && approxEqual(r2.reduce((a,b)=>a+b,0), 100)});
+      const r3 = computeSharesGiven(23.57, [2,3,5]);
+      tests.push({name:'sum equals total (23.57€ with 2/3/5h)', pass: approxEqual(r3.reduce((a,b)=>a+b,0), 23.57)});
 
       console.group('%cSelf-tests','color:#10b981');
       let all=true; tests.forEach(t=>{ all = all && t.pass; console.log((t.pass?'✅':'❌'), t.name); });
